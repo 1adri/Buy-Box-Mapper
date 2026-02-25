@@ -195,15 +195,21 @@ $('btnPresetSave').addEventListener('click', saveCurrentAsCustomPreset);
 $('btnPresetDelete').addEventListener('click', deleteSelectedCustomPreset);
 
 $('btnUseCurrentAsin').addEventListener('click', () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
     const tab = tabs?.[0];
-    if (!tab?.url) return showStatus('Could not read current tab URL.');
+    if (!tab?.url) {
+      showStatus('Could not find an active browser tab. Focus an Amazon tab and try again.');
+      return;
+    }
 
     const isAmazonProductPage = /^https?:\/\/(www\.|smile\.)?amazon\.com\//i.test(tab.url);
     if (!isAmazonProductPage) return showStatus('Open an Amazon product page, then try again.');
 
     const asin = extractAsinFromUrl(tab.url);
-    if (!asin) return showStatus('No ASIN found in current Amazon URL.');
+    if (!asin) {
+      showStatus('No ASIN found in current Amazon URL. Open a product detail page and try again.');
+      return;
+    }
 
     addAsinToList(asin);
   });
