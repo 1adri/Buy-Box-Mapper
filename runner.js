@@ -1,4 +1,4 @@
-/* runner.js – Buy Box Geo Sampler orchestration */
+/* runner.js – Buy Box Mapper orchestration */
 
 const $ = s => document.getElementById(s);
 const logEl = $('log');
@@ -264,7 +264,7 @@ $('btnExport').addEventListener('click', async () => {
   const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const d = new Date().toISOString().slice(0,10);
-  chrome.downloads.download({ url, filename: `buybox-geo-sampler_${d}.csv`, saveAs: true });
+  chrome.downloads.download({ url, filename: `buy-box-mapper_${d}.csv`, saveAs: true });
 });
 
 $('btnAmazon').addEventListener('click', async () => {

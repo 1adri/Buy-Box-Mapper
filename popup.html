@@ -1,27 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><link rel="stylesheet" href="popup.css"></head>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
 <body>
-  <h1>🛒 Buy Box Geo Sampler</h1>
+  <header>
+    <h1>🛒 Buy Box Mapper</h1>
+    <p class="subtitle">Track Buy Box winners by ZIP code across your ASIN catalog.</p>
+  </header>
 
-  <label for="sellerName">Seller Display Name</label>
-  <input id="sellerName" placeholder="e.g. MyStoreName" />
+  <section class="panel">
+    <label for="sellerName">Seller Display Name</label>
+    <input id="sellerName" placeholder="e.g. MyStoreName" />
 
-  <label for="asins">ASINs (one per line)</label>
-  <textarea id="asins" placeholder="B08N5WRWNW&#10;B09V3KXJPB"></textarea>
+    <label for="asins">ASINs (one per line)</label>
+    <textarea id="asins" placeholder="B08N5WRWNW&#10;B09V3KXJPB"></textarea>
+    <button class="btn-asin-fill" id="btnUseCurrentAsin" type="button">🔎 Use ASIN from Current Amazon Tab</button>
 
-  <label for="zips">ZIP Codes (one per line)</label>
-  <textarea id="zips" placeholder="10001&#10;90210&#10;60601"></textarea>
+    <div class="field-head">
+      <label for="zips">ZIP Codes (one per line)</label>
+      <span class="field-help">Use presets below for faster setup.</span>
+    </div>
+    <textarea id="zips" placeholder="10001&#10;90210&#10;60601"></textarea>
 
-  <label for="delay">Delay between checks (seconds, min 10)</label>
-  <input id="delay" type="number" value="25" min="10" />
+    <div class="preset-row">
+      <select id="zipPreset">
+        <option value="">Load ZIP preset…</option>
+      </select>
+      <button class="btn-secondary" id="btnPresetReplace" type="button">Replace</button>
+      <button class="btn-secondary" id="btnPresetAppend" type="button">Append</button>
+    </div>
 
-  <label for="mode">Start Mode</label>
-  <select id="mode">
-    <option value="zip_then_asin">Each ZIP, then all ASINs</option>
-    <option value="asin_then_zip">Each ASIN, then all ZIPs</option>
-  </select>
-  <div class="mode-hint" id="modeHint">Sets one ZIP, checks all ASINs there, then moves to the next ZIP. Fewer ZIP changes = faster.</div>
+    <label for="delay">Delay between checks (seconds, min 10)</label>
+    <input id="delay" type="number" value="25" min="10" />
+
+    <label for="mode">Start Mode</label>
+    <select id="mode">
+      <option value="zip_then_asin">Each ZIP, then all ASINs</option>
+      <option value="asin_then_zip">Each ASIN, then all ZIPs</option>
+    </select>
+    <div class="mode-hint" id="modeHint">Sets one ZIP, checks all ASINs there, then moves to the next ZIP. Fewer ZIP changes = faster.</div>
+  </section>
 
   <div class="row">
     <button class="btn-start" id="btnStart">▶ Start</button>
