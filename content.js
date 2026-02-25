@@ -1,4 +1,4 @@
-/* content.js – Buy Box Geo Sampler – injected on amazon.com */
+/* content.js – Buy Box Mapper – injected on amazon.com */
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
