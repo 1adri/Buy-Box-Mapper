@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Buy Box Geo Sampler",
+  "version": "1.0.0",
+  "description": "Sample Amazon Buy Box (Featured Offer) across US ZIP codes for your ASINs.",
+  "permissions": ["storage", "tabs", "downloads"],
+  "host_permissions": [
+    "https://www.amazon.com/*",
+    "https://smile.amazon.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Buy Box Geo Sampler"
+  },
+  "background": {
+    "service_worker": "sw_placeholder.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.amazon.com/*", "https://smile.amazon.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

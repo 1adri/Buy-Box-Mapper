@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <h1>🛒 Buy Box Geo Sampler</h1>
+
+  <label for="sellerName">Seller Display Name</label>
+  <input id="sellerName" placeholder="e.g. MyStoreName" />
+
+  <label for="asins">ASINs (one per line)</label>
+  <textarea id="asins" placeholder="B08N5WRWNW&#10;B09V3KXJPB"></textarea>
+
+  <label for="zips">ZIP Codes (one per line)</label>
+  <textarea id="zips" placeholder="10001&#10;90210&#10;60601"></textarea>
+
+  <label for="delay">Delay between checks (seconds, min 10)</label>
+  <input id="delay" type="number" value="25" min="10" />
+
+  <label for="mode">Start Mode</label>
+  <select id="mode">
+    <option value="zip_then_asin">Each ZIP, then all ASINs</option>
+    <option value="asin_then_zip">Each ASIN, then all ZIPs</option>
+  </select>
+  <div class="mode-hint" id="modeHint">Sets one ZIP, checks all ASINs there, then moves to the next ZIP. Fewer ZIP changes = faster.</div>
+
+  <div class="row">
+    <button class="btn-start" id="btnStart">▶ Start</button>
+    <button class="btn-stop" id="btnStop">⏹ Stop</button>
+  </div>
+  <div class="row">
+    <button class="btn-export" id="btnExport">📥 Export CSV</button>
+    <button class="btn-clear" id="btnClear">🗑 Clear</button>
+    <button class="btn-runner" id="btnRunner">🖥 Runner</button>
+  </div>
+
+  <div id="status">Ready.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

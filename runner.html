@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>BBGS Runner</title><link rel="stylesheet" href="runner.css"></head>
+<body>
+  <h1>🛒 Buy Box Geo Sampler — Runner</h1>
+  <div class="info-bar" id="infoBar">
+    <span>State: <strong id="stState">—</strong></span>
+    <span>Progress: <strong id="stProgress">—</strong></span>
+    <span>Delay: <strong id="stDelay">—</strong>s</span>
+    <span>Seller: <strong id="stSeller">—</strong></span>
+    <span>Tab: <strong id="stTab">—</strong></span>
+  </div>
+  <div class="row">
+    <button class="btn-stop" id="btnStop">⏹ Stop</button>
+    <button class="btn-export" id="btnExport">📥 Export CSV</button>
+    <button class="btn-amazon" id="btnAmazon">🌐 Open Amazon Tab</button>
+  </div>
+  <div id="log"></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Time</th><th>ASIN</th><th>ZIP</th><th>Status</th><th>Sold By</th><th>You?</th><th>Notes</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <script src="runner.js"></script>
+</body>
+</html>
