@@ -1,6 +1,14 @@
-/* popup.js – Buy Box Geo Sampler */
+/* popup.js – Buy Box Mapper */
 
 const $ = (s) => document.getElementById(s);
+
+const ZIP_PRESETS = {
+  'USA “Most Coverage” (balanced national sample)': ['10001', '02108', '20001', '33131', '30301', '60601', '75201', '80202', '85004', '98101', '90012', '94105'],
+  'West (Pacific Coast + nearby)': ['98101', '97205', '94105', '95814', '94607', '90012', '92101', '93101', '89101', '89501'],
+  'Mountain (Rockies / Intermountain)': ['80202', '84101', '83702', '87102', '85004', '82001', '68102', '59101', '59802', '83440'],
+  'Central (Midwest + South-Central)': ['60601', '55401', '64106', '63101', '46204', '43215', '37219', '75201', '77002', '73102'],
+  'East (Northeast + Southeast Atlantic)': ['10001', '02108', '19103', '20001', '15222', '28202', '27601', '30301', '32202', '33131']
+};
 
 function parseAsins(text) {
   return text.split(/\n/)
@@ -47,12 +55,48 @@ function saveInputs() {
 
 function showStatus(msg) { $('status').textContent = msg; }
 
+function populateZipPresets() {
+  const preset = $('zipPreset');
+  for (const name of Object.keys(ZIP_PRESETS)) {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    preset.appendChild(option);
+  }
+}
+
+function getPresetZips() {
+  const selected = $('zipPreset').value;
+  return ZIP_PRESETS[selected] || [];
+}
+
+function applyZipPreset(append) {
+  const presetZips = getPresetZips();
+  if (!presetZips.length) return showStatus('Select a ZIP preset first.');
+
+  const currentZips = parseZips($('zips').value);
+  const merged = append ? [...new Set([...currentZips, ...presetZips])] : presetZips;
+  $('zips').value = merged.join('\n');
+  saveInputs();
+  showStatus(`${append ? 'Appended' : 'Loaded'} ${presetZips.length} ZIPs from "${$('zipPreset').value}".`);
+}
+
 const modeHints = {
-  zip_then_asin: "Sets one ZIP, checks all ASINs there, then moves to the next ZIP. Fewer ZIP changes = faster.",
-  asin_then_zip: "Picks one ASIN, checks it across all ZIPs, then moves to the next ASIN. Good for per-product analysis."
+  zip_then_asin: 'Sets one ZIP, checks all ASINs there, then moves to the next ZIP. Fewer ZIP changes = faster.',
+  asin_then_zip: 'Picks one ASIN, checks it across all ZIPs, then moves to the next ASIN. Good for per-product analysis.'
 };
+
 function updateModeHint() { $('modeHint').textContent = modeHints[$('mode').value]; }
+
+['sellerName', 'asins', 'zips', 'delay', 'mode'].forEach((id) => {
+  const el = $(id);
+  el.addEventListener('input', saveInputs);
+  el.addEventListener('change', saveInputs);
+});
+
 $('mode').addEventListener('change', updateModeHint);
+$('btnPresetReplace').addEventListener('click', () => applyZipPreset(false));
+$('btnPresetAppend').addEventListener('click', () => applyZipPreset(true));
 
 $('btnStart').addEventListener('click', () => {
   saveInputs();
@@ -117,13 +161,16 @@ $('btnRunner').addEventListener('click', () => {
 });
 
 function exportCsv(rows) {
-  const headers = ['timestamp','asin','zip','status','featured_sold_by','is_you_featured','notes','url'];
+  const headers = ['timestamp', 'asin', 'zip', 'status', 'featured_sold_by', 'is_you_featured', 'notes', 'url'];
   const csv = [headers.join(',')];
   for (const r of rows) {
     csv.push(headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','));
   }
   const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
-  const d = new Date().toISOString().slice(0,10);
-  chrome.downloads.download({ url, filename: `buybox-geo-sampler_${d}.csv`, saveAs: true });
+  const d = new Date().toISOString().slice(0, 10);
+  chrome.downloads.download({ url, filename: `buy-box-mapper_${d}.csv`, saveAs: true });
 }
+
+populateZipPresets();
+updateModeHint();
