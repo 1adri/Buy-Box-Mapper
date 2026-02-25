@@ -1,7 +1,18 @@
-/* runner.js – Buy Box Geo Sampler orchestration */
+/* runner.js – Buy Box Mapper orchestration */
 
 const $ = s => document.getElementById(s);
 const logEl = $('log');
+
+const filters = {
+  search: '',
+  status: 'all',
+  you: 'all'
+};
+
+const sortState = {
+  key: 'timestamp',
+  dir: 'desc'
+};
 
 function log(msg) {
   const ts = new Date().toLocaleTimeString();
@@ -38,24 +49,131 @@ function updateInfo(rs) {
   $('stState').textContent = rs.running ? (rs.stopRequested ? 'Stopping…' : 'Running') : 'Stopped';
   $('stProgress').textContent = `${rs.idx} / ${rs.queue.length}`;
   $('stDelay').textContent = rs.delaySec;
+  $('stRetries').textContent = rs.maxRetries ?? 0;
   $('stSeller').textContent = rs.sellerName;
   $('stTab').textContent = rs.workTabId ?? '—';
+  $('stCaptchaStreak').textContent = rs.captchaStreak ?? 0;
+}
+
+function statusBadgeClass(status) {
+  if (status === 'OK') return 'badge-ok';
+  if (status === 'CAPTCHA' || status === 'ERROR') return 'badge-err';
+  return 'badge-warn';
+}
+
+function applyFilters(rows) {
+  return rows.filter(r => {
+    if (filters.status !== 'all' && r.status !== filters.status) return false;
+    if (filters.you === 'yes' && !r.is_you_featured) return false;
+    if (filters.you === 'no' && r.is_you_featured) return false;
+
+    if (!filters.search) return true;
+    const haystack = [r.asin, r.zip, r.status, r.featured_sold_by, r.notes, r.featured_qty_available]
+      .map(x => String(x ?? '').toLowerCase())
+      .join(' ');
+    return haystack.includes(filters.search.toLowerCase());
+  });
+}
+
+function buildRateList(rows, field, maxItems = 5) {
+  const map = new Map();
+  for (const row of rows) {
+    const key = row[field] || '—';
+    if (!map.has(key)) map.set(key, { total: 0, wins: 0 });
+    const v = map.get(key);
+    v.total += 1;
+    if (row.is_you_featured) v.wins += 1;
+  }
+  return [...map.entries()]
+    .map(([key, v]) => ({ key, ...v, rate: v.total ? (v.wins / v.total) * 100 : 0 }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, maxItems);
+}
+
+function renderSummary(rows) {
+  const total = rows.length;
+  const wins = rows.filter(r => r.is_you_featured).length;
+  const fail = rows.filter(r => ['CAPTCHA', 'ZIP_SET_FAILED', 'EXTRACT_FAILED', 'ERROR'].includes(r.status)).length;
+  const withQty = rows.filter(r => r.featured_qty_available !== '' && r.featured_qty_available != null).length;
+  const avgRetries = total ? (rows.reduce((n, r) => n + (Number(r.retry_count) || 0), 0) / total).toFixed(2) : '0.00';
+
+  $('summaryCards').innerHTML = [
+    ['Total checks', total],
+    ['Your wins', wins],
+    ['Win rate', `${total ? ((wins / total) * 100).toFixed(1) : 0}%`],
+    ['Failures', fail],
+    ['Rows w/ qty', withQty],
+    ['Avg retries', avgRetries]
+  ].map(([label, value]) => `<div class="summary-card"><div class="label">${label}</div><div class="value">${value}</div></div>`).join('');
+
+  const asinRates = buildRateList(rows, 'asin');
+  $('summaryAsin').innerHTML = asinRates.length
+    ? asinRates.map(r => `<li>${r.key}: ${r.wins}/${r.total} (${r.rate.toFixed(1)}%)</li>`).join('')
+    : '<li>No data yet.</li>';
+
+  const zipRates = buildRateList(rows, 'zip');
+  $('summaryZip').innerHTML = zipRates.length
+    ? zipRates.map(r => `<li>${r.key}: ${r.wins}/${r.total} (${r.rate.toFixed(1)}%)</li>`).join('')
+    : '<li>No data yet.</li>';
+}
+
+function toSortValue(row, key) {
+  const value = row[key];
+  if (key === 'timestamp') return Date.parse(value || '') || 0;
+  if (key === 'is_you_featured') return value ? 1 : 0;
+  if (key === 'retry_count') return Number(value) || 0;
+  if (key === 'featured_qty_available') {
+    const raw = String(value ?? '').trim();
+    const plusMatch = raw.match(/^(\d+)\+$/);
+    if (plusMatch) return Number(plusMatch[1]) + 0.5;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : -1;
+  }
+  return String(value ?? '').toLowerCase();
+}
+
+function sortRows(rows) {
+  const dirMul = sortState.dir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const va = toSortValue(a, sortState.key);
+    const vb = toSortValue(b, sortState.key);
+    if (va < vb) return -1 * dirMul;
+    if (va > vb) return 1 * dirMul;
+    return 0;
+  });
+}
+
+function updateSortIndicators() {
+  document.querySelectorAll('th.sortable').forEach((th) => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (th.dataset.sort === sortState.key) {
+      th.classList.add(sortState.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+    }
+  });
 }
 
 function renderResults(rows) {
-  const last80 = rows.slice(-80).reverse();
-  $('tbody').innerHTML = last80.map(r => {
+  const filtered = applyFilters(rows);
+  const sorted = sortRows(filtered);
+  const visibleRows = sorted.slice(0, 300);
+
+  $('tbody').innerHTML = visibleRows.map(r => {
     const cls = r.is_you_featured ? 'is-you' : 'not-you';
-    const badge = r.status === 'OK' ? 'badge-ok' : (r.status === 'CAPTCHA' ? 'badge-err' : 'badge-warn');
     return `<tr class="${cls}">
       <td>${r.timestamp?.slice(11,19) || ''}</td>
-      <td>${r.asin}</td><td>${r.zip}</td>
-      <td><span class="badge ${badge}">${r.status}</span></td>
-      <td>${r.featured_sold_by}</td>
+      <td>${r.asin}</td>
+      <td>${r.zip}</td>
+      <td><span class="badge ${statusBadgeClass(r.status)}">${r.status}</span></td>
+      <td>${r.featured_sold_by || ''}</td>
       <td>${r.is_you_featured ? '✅' : '❌'}</td>
-      <td>${r.notes}</td>
+      <td>${r.featured_qty_available ?? ''}</td>
+      <td>${r.retry_count ?? 0}</td>
+      <td>${r.notes || ''}</td>
     </tr>`;
   }).join('');
+
+  renderSummary(rows);
+  updateSortIndicators();
 }
 
 /* ── Tab helpers ───────────────────────────────── */
@@ -88,15 +206,13 @@ function createWorkTab(rs) {
 function navigateTab(tabId, url) {
   return new Promise((resolve) => {
     chrome.tabs.update(tabId, { url }, () => {
-      // wait for load
       function listener(tid, info) {
         if (tid === tabId && info.status === 'complete') {
           chrome.tabs.onUpdated.removeListener(listener);
-          setTimeout(resolve, 1500); // small grace period
+          setTimeout(resolve, 1500);
         }
       }
       chrome.tabs.onUpdated.addListener(listener);
-      // timeout after 30s
       setTimeout(() => {
         chrome.tabs.onUpdated.removeListener(listener);
         resolve();
@@ -121,107 +237,146 @@ function sendToTab(tabId, message) {
 
 let lastZip = null;
 
+async function runAttempt(job, rs, tabId, attemptNum) {
+  let result = {
+    run_id: rs.runId || '',
+    timestamp: new Date().toISOString(),
+    asin: job.asin,
+    zip: job.zip,
+    status: 'OK',
+    featured_sold_by: '',
+    is_you_featured: false,
+    featured_qty_available: '',
+    retry_count: attemptNum - 1,
+    mode: rs.mode,
+    delay_sec: rs.delaySec,
+    notes: '',
+    url: `https://www.amazon.com/dp/${job.asin}?th=1&psc=1`
+  };
+
+  if (job.zip !== lastZip) {
+    log(`  Setting ZIP to ${job.zip}…`);
+    await navigateTab(tabId, 'https://www.amazon.com');
+    await sleep(2000);
+
+    const zipRes = await sendToTab(tabId, { type: 'BBGS_SET_ZIP', zip: job.zip });
+    if (zipRes.ok) {
+      lastZip = job.zip;
+      log('  ZIP set OK.');
+      await sleep(1500);
+    } else {
+      result.status = zipRes.status || 'ZIP_SET_FAILED';
+      result.notes = zipRes.error || 'ZIP set failed';
+      if (zipRes.status === 'CAPTCHA') return result;
+    }
+  }
+
+  log('  Loading ASIN page…');
+  await navigateTab(tabId, result.url);
+  await sleep(1500);
+
+  const extRes = await sendToTab(tabId, { type: 'BBGS_EXTRACT', sellerName: rs.sellerName });
+  if (extRes.ok) {
+    if (result.status === 'OK') result.status = extRes.status;
+    result.featured_sold_by = extRes.soldBy || '';
+    result.is_you_featured = extRes.isYou || false;
+    result.featured_qty_available = extRes.qtyAvailable ?? '';
+    result.notes = (result.notes ? `${result.notes}; ` : '') + (extRes.notes || '');
+  } else {
+    result.status = extRes.status === 'CAPTCHA' ? 'CAPTCHA' : 'EXTRACT_FAILED';
+    result.notes = (result.notes ? `${result.notes}; ` : '') + (extRes.error || 'Extraction failed');
+  }
+
+  return result;
+}
+
+function shouldRetry(status) {
+  return ['ZIP_SET_FAILED', 'EXTRACT_FAILED', 'UNKNOWN', 'ERROR'].includes(status);
+}
+
 async function runLoop() {
   let rs = await getRunstate();
   if (!rs || !rs.running) { log('No active run.'); return; }
 
-  log(`Starting run: ${rs.queue.length} jobs, delay=${rs.delaySec}s, mode=${rs.mode}`);
+  rs.captchaStreak = rs.captchaStreak || 0;
+  rs.captchaStreakLimit = rs.captchaStreakLimit || 3;
+  rs.captchaCooldownSec = rs.captchaCooldownSec || 0;
+  await setRunstate(rs);
+
+  log(`Starting run: ${rs.queue.length} jobs, delay=${rs.delaySec}s, mode=${rs.mode}, retries=${rs.maxRetries || 0}, captchaLimit=${rs.captchaStreakLimit}`);
   updateInfo(rs);
 
   const tabId = await ensureWorkTab(rs);
   log(`Work tab: ${tabId}`);
   updateInfo(rs);
 
-  // Wait for initial tab load
-  await sleep(2000);
+  await sleep(1500);
 
   while (rs.idx < rs.queue.length) {
     rs = await getRunstate();
     if (!rs || rs.stopRequested || !rs.running) {
       log('Stop requested. Halting.');
-      rs.running = false;
-      rs.stopRequested = false;
-      await setRunstate(rs);
-      updateInfo(rs);
+      if (rs) {
+        rs.running = false;
+        rs.stopRequested = false;
+        await setRunstate(rs);
+        updateInfo(rs);
+      }
       return;
     }
 
     const job = rs.queue[rs.idx];
+    const maxAttempts = (rs.maxRetries ?? 0) + 1;
     log(`Job ${rs.idx + 1}/${rs.queue.length}: ASIN=${job.asin} ZIP=${job.zip}`);
-    updateInfo(rs);
 
-    let result = {
-      timestamp: new Date().toISOString(),
-      asin: job.asin,
-      zip: job.zip,
-      status: 'OK',
-      featured_sold_by: '',
-      is_you_featured: false,
-      notes: '',
-      url: `https://www.amazon.com/dp/${job.asin}?th=1&psc=1`
-    };
+    let finalResult = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (attempt > 1) {
+        log(`  Retry ${attempt - 1}/${maxAttempts - 1}…`);
+        await sleep(1200);
+      }
 
-    // Step 1: Set ZIP if needed
-    if (job.zip !== lastZip) {
-      log(`  Setting ZIP to ${job.zip}…`);
-      await navigateTab(tabId, 'https://www.amazon.com');
-      await sleep(2000);
+      const attemptResult = await runAttempt(job, rs, tabId, attempt);
+      finalResult = attemptResult;
 
-      const zipRes = await sendToTab(tabId, { type: 'BBGS_SET_ZIP', zip: job.zip });
-      if (zipRes.ok) {
-        lastZip = job.zip;
-        log(`  ZIP set OK.`);
-        await sleep(2000);
-      } else {
-        log(`  ZIP set FAILED: ${zipRes.error || zipRes.status}`);
-        if (zipRes.status === 'CAPTCHA') {
-          result.status = 'CAPTCHA';
-          result.notes = 'CAPTCHA during ZIP change';
-          await appendResult(result);
-          renderResults(await getResults());
-          rs.idx++;
+      if (!shouldRetry(attemptResult.status) || attempt === maxAttempts) {
+        break;
+      }
+
+      log(`  Attempt failed with ${attemptResult.status}, will retry.`);
+      if (attemptResult.status === 'ZIP_SET_FAILED') lastZip = null;
+    }
+
+    if (finalResult.status === 'CAPTCHA') {
+      rs.captchaStreak = (rs.captchaStreak || 0) + 1;
+      log(`  CAPTCHA streak: ${rs.captchaStreak}/${rs.captchaStreakLimit}`);
+      if (rs.captchaStreak >= rs.captchaStreakLimit) {
+        if (rs.captchaCooldownSec > 0) {
+          log(`  CAPTCHA limit reached. Cooling down for ${rs.captchaCooldownSec}s before continuing...`);
           await setRunstate(rs);
-          log(`  Sleeping ${rs.delaySec}s…`);
-          await sleep(rs.delaySec * 1000);
-          continue;
+          updateInfo(rs);
+          await sleep(rs.captchaCooldownSec * 1000);
+          rs.captchaStreak = 0;
+          lastZip = null;
+        } else {
+          log('  CAPTCHA limit reached. Stopping run for safety.');
+          rs.running = false;
+          rs.stopRequested = false;
+          await setRunstate(rs);
+          updateInfo(rs);
+          await appendResult(finalResult);
+          renderResults(await getResults());
+          return;
         }
-        result.status = 'ZIP_SET_FAILED';
-        result.notes = zipRes.error || 'ZIP set failed';
-        // still try ASIN extraction
       }
     } else {
-      log(`  ZIP ${job.zip} already set, skipping.`);
+      rs.captchaStreak = 0;
     }
 
-    // Step 2: Navigate to ASIN
-    log(`  Loading ASIN page…`);
-    await navigateTab(tabId, result.url);
-    await sleep(2000);
-
-    // Step 3: Extract
-    const extRes = await sendToTab(tabId, { type: 'BBGS_EXTRACT', sellerName: rs.sellerName });
-    if (extRes.ok) {
-      if (result.status === 'OK' || result.status === 'ZIP_SET_FAILED') {
-        result.status = result.status === 'ZIP_SET_FAILED' ? 'ZIP_SET_FAILED' : extRes.status;
-      }
-      result.featured_sold_by = extRes.soldBy || '';
-      result.is_you_featured = extRes.isYou || false;
-      result.notes = (result.notes ? result.notes + '; ' : '') + (extRes.notes || '');
-      log(`  Sold by: "${result.featured_sold_by}" | You: ${result.is_you_featured ? 'YES ✅' : 'NO ❌'}`);
-    } else {
-      if (extRes.status === 'CAPTCHA') {
-        result.status = 'CAPTCHA';
-        result.notes = (result.notes ? result.notes + '; ' : '') + 'CAPTCHA on ASIN page';
-        log(`  CAPTCHA detected!`);
-      } else {
-        result.status = 'EXTRACT_FAILED';
-        result.notes = (result.notes ? result.notes + '; ' : '') + (extRes.error || 'Extraction failed');
-        log(`  Extract failed: ${extRes.error}`);
-      }
-    }
-
-    await appendResult(result);
+    await appendResult(finalResult);
     renderResults(await getResults());
+
+    log(`  Result: ${finalResult.status} | Sold by "${finalResult.featured_sold_by}" | You=${finalResult.is_you_featured ? 'YES' : 'NO'} | Qty=${finalResult.featured_qty_available || 'n/a'}`);
 
     rs.idx++;
     await setRunstate(rs);
@@ -235,12 +390,14 @@ async function runLoop() {
 
   log('✅ Run complete!');
   rs = await getRunstate();
-  rs.running = false;
-  await setRunstate(rs);
-  updateInfo(rs);
+  if (rs) {
+    rs.running = false;
+    await setRunstate(rs);
+    updateInfo(rs);
+  }
 }
 
-/* ── Buttons ───────────────────────────────────── */
+/* ── Buttons / Filters ─────────────────────────── */
 
 $('btnStop').addEventListener('click', async () => {
   const rs = await getRunstate();
@@ -256,15 +413,23 @@ $('btnStop').addEventListener('click', async () => {
 $('btnExport').addEventListener('click', async () => {
   const rows = await getResults();
   if (!rows.length) return log('No results.');
-  const headers = ['timestamp','asin','zip','status','featured_sold_by','is_you_featured','notes','url'];
+
+  const headers = ['run_id', 'timestamp', 'asin', 'zip', 'status', 'featured_sold_by', 'is_you_featured', 'featured_qty_available', 'retry_count', 'mode', 'delay_sec', 'notes', 'url'];
   const csv = [headers.join(',')];
   for (const r of rows) {
     csv.push(headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','));
   }
   const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
-  const d = new Date().toISOString().slice(0,10);
-  chrome.downloads.download({ url, filename: `buybox-geo-sampler_${d}.csv`, saveAs: true });
+  const d = new Date().toISOString().slice(0, 10);
+  chrome.downloads.download({ url, filename: `buy-box-mapper_${d}.csv`, saveAs: true });
+});
+
+$('btnClear').addEventListener('click', async () => {
+  if (!confirm('Clear all stored results from runner?')) return;
+  await new Promise(resolve => chrome.storage.local.remove('bbgs_results', resolve));
+  renderResults([]);
+  log('Results cleared.');
 });
 
 $('btnAmazon').addEventListener('click', async () => {
@@ -274,6 +439,32 @@ $('btnAmazon').addEventListener('click', async () => {
   } else {
     chrome.tabs.create({ url: 'https://www.amazon.com' });
   }
+});
+
+$('fltSearch').addEventListener('input', async (e) => {
+  filters.search = e.target.value;
+  renderResults(await getResults());
+});
+$('fltStatus').addEventListener('change', async (e) => {
+  filters.status = e.target.value;
+  renderResults(await getResults());
+});
+$('fltYou').addEventListener('change', async (e) => {
+  filters.you = e.target.value;
+  renderResults(await getResults());
+});
+
+document.querySelectorAll('th.sortable').forEach((th) => {
+  th.addEventListener('click', async () => {
+    const key = th.dataset.sort;
+    if (sortState.key === key) {
+      sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortState.key = key;
+      sortState.dir = key === 'timestamp' ? 'desc' : 'asc';
+    }
+    renderResults(await getResults());
+  });
 });
 
 /* ── Init ──────────────────────────────────────── */
