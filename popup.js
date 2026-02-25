@@ -1,6 +1,14 @@
-/* popup.js – Buy Box Geo Sampler */
+/* popup.js – Buy Box Mapper */
 
 const $ = (s) => document.getElementById(s);
+
+const ZIP_PRESETS = {
+  "Top 10 US metros": ['10001', '90001', '60601', '77001', '85001', '19103', '78205', '92101', '75201', '30301'],
+  "West Coast hubs": ['94105', '90001', '92101', '98101', '97205', '95814', '89501', '89101'],
+  "Northeast corridor": ['10001', '07030', '19103', '02108', '20001', '14202', '06103', '02903'],
+  "Sun Belt growth": ['33101', '30301', '28202', '37203', '78701', '73301', '85001', '89101'],
+  "Texas triangle": ['75201', '77001', '73301', '78701', '76102', '78205', '75001', '78758']
+};
 
 function parseAsins(text) {
   return text.split(/\n/)
@@ -47,12 +55,40 @@ function saveInputs() {
 
 function showStatus(msg) { $('status').textContent = msg; }
 
+function populateZipPresets() {
+  const preset = $('zipPreset');
+  for (const name of Object.keys(ZIP_PRESETS)) {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    preset.appendChild(option);
+  }
+}
+
+function getPresetZips() {
+  const selected = $('zipPreset').value;
+  return ZIP_PRESETS[selected] || [];
+}
+
+function applyZipPreset(append) {
+  const presetZips = getPresetZips();
+  if (!presetZips.length) return showStatus('Select a ZIP preset first.');
+
+  const currentZips = parseZips($('zips').value);
+  const merged = append ? [...new Set([...currentZips, ...presetZips])] : presetZips;
+  $('zips').value = merged.join('\n');
+  saveInputs();
+  showStatus(`${append ? 'Appended' : 'Loaded'} ${presetZips.length} ZIPs from "${$('zipPreset').value}".`);
+}
+
 const modeHints = {
   zip_then_asin: "Sets one ZIP, checks all ASINs there, then moves to the next ZIP. Fewer ZIP changes = faster.",
   asin_then_zip: "Picks one ASIN, checks it across all ZIPs, then moves to the next ASIN. Good for per-product analysis."
 };
 function updateModeHint() { $('modeHint').textContent = modeHints[$('mode').value]; }
 $('mode').addEventListener('change', updateModeHint);
+$('btnPresetReplace').addEventListener('click', () => applyZipPreset(false));
+$('btnPresetAppend').addEventListener('click', () => applyZipPreset(true));
 
 $('btnStart').addEventListener('click', () => {
   saveInputs();
@@ -125,5 +161,8 @@ function exportCsv(rows) {
   const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const d = new Date().toISOString().slice(0,10);
-  chrome.downloads.download({ url, filename: `buybox-geo-sampler_${d}.csv`, saveAs: true });
+  chrome.downloads.download({ url, filename: `buy-box-mapper_${d}.csv`, saveAs: true });
 }
+
+populateZipPresets();
+updateModeHint();
