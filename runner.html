@@ -1,24 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>BBGS Runner</title><link rel="stylesheet" href="runner.css"></head>
+<head><meta charset="UTF-8"><title>Buy Box Mapper Runner</title><link rel="stylesheet" href="runner.css"></head>
 <body>
-  <h1>🛒 Buy Box Geo Sampler — Runner</h1>
+  <h1>🛒 Buy Box Mapper — Runner</h1>
   <div class="info-bar" id="infoBar">
     <span>State: <strong id="stState">—</strong></span>
     <span>Progress: <strong id="stProgress">—</strong></span>
     <span>Delay: <strong id="stDelay">—</strong>s</span>
+    <span>Retries: <strong id="stRetries">—</strong></span>
     <span>Seller: <strong id="stSeller">—</strong></span>
     <span>Tab: <strong id="stTab">—</strong></span>
   </div>
+
+  <section class="summary-panel">
+    <div class="summary-grid" id="summaryCards"></div>
+    <div class="summary-details">
+      <div>
+        <h3>ASIN win rate</h3>
+        <ul id="summaryAsin"></ul>
+      </div>
+      <div>
+        <h3>ZIP win rate</h3>
+        <ul id="summaryZip"></ul>
+      </div>
+    </div>
+  </section>
+
   <div class="row">
     <button class="btn-stop" id="btnStop">⏹ Stop</button>
     <button class="btn-export" id="btnExport">📥 Export CSV</button>
     <button class="btn-amazon" id="btnAmazon">🌐 Open Amazon Tab</button>
   </div>
+
+  <div class="filters">
+    <input id="fltSearch" placeholder="Search ASIN, ZIP, seller, notes..." />
+    <select id="fltStatus">
+      <option value="all">All statuses</option>
+      <option value="OK">OK</option>
+      <option value="UNKNOWN">UNKNOWN</option>
+      <option value="CAPTCHA">CAPTCHA</option>
+      <option value="ZIP_SET_FAILED">ZIP_SET_FAILED</option>
+      <option value="EXTRACT_FAILED">EXTRACT_FAILED</option>
+      <option value="ERROR">ERROR</option>
+    </select>
+    <select id="fltYou">
+      <option value="all">You + not you</option>
+      <option value="yes">You only</option>
+      <option value="no">Not you only</option>
+    </select>
+  </div>
+
   <div id="log"></div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Time</th><th>ASIN</th><th>ZIP</th><th>Status</th><th>Sold By</th><th>You?</th><th>Notes</th></tr></thead>
+      <thead><tr><th>Time</th><th>ASIN</th><th>ZIP</th><th>Status</th><th>Sold By</th><th>You?</th><th>Qty</th><th>Retry</th><th>Notes</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table>
   </div>
