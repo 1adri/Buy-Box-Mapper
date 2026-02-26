@@ -1,2 +1,8 @@
 # Buy Box Mapper
-A google chrome extension that analyzes which amazon seller is winning the buy box in different zip codes.
+A Google Chrome extension that analyzes which Amazon seller is winning the Buy Box in different zip codes.
+
+## GitHub Pages
+This repository now includes a basic static site for GitHub Pages:
+
+- `index.html` – project landing page
+- `privacy-policy.html` – privacy policy page
