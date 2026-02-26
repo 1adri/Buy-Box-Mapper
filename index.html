@@ -1,11 +1,187 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Buy Box Mapper</title>
-</head>
-<body>
-  <h1>Buy Box Mapper</h1>
-  <p><a href="privacy-policy.html">Privacy Policy</a></p>
-</body>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Buy Box Mapper</title>
+    <meta
+      name="description"
+      content="Buy Box Mapper helps analyze which Amazon seller wins the Buy Box across zip codes."
+    />
+    <style>
+      :root {
+        --bg: #0b1220;
+        --surface: #111a2b;
+        --surface-2: #18243a;
+        --text: #e5ecff;
+        --subtle: #b9c6e7;
+        --brand: #5ea2ff;
+        --brand-2: #89b9ff;
+        --border: #243654;
+        --success: #9effcf;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at top right, #1b2b49 0%, var(--bg) 45%), var(--bg);
+      }
+
+      .wrap {
+        width: min(980px, 92vw);
+        margin: 0 auto;
+      }
+
+      header {
+        padding: 24px 0;
+      }
+
+      .brand {
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+
+      .hero {
+        padding: 36px 0 24px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 3.1rem);
+        line-height: 1.1;
+      }
+
+      .lead {
+        margin-top: 18px;
+        color: var(--subtle);
+        max-width: 730px;
+        font-size: 1.06rem;
+      }
+
+      .cta-row {
+        margin-top: 28px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        display: inline-block;
+        padding: 12px 16px;
+        border-radius: 10px;
+        text-decoration: none;
+        border: 1px solid var(--border);
+        color: var(--text);
+        transition: 0.15s ease;
+      }
+
+      .btn.primary {
+        background: linear-gradient(180deg, var(--brand), #3f8bff);
+        border-color: transparent;
+        color: #08152e;
+        font-weight: 700;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .grid {
+        margin: 28px 0 50px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: linear-gradient(180deg, var(--surface), var(--surface-2));
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px;
+      }
+
+      .card h2 {
+        margin: 0;
+        font-size: 1.08rem;
+      }
+
+      .card p {
+        margin: 8px 0 0;
+        color: var(--subtle);
+        font-size: 0.95rem;
+      }
+
+      .status {
+        margin-top: 8px;
+        color: var(--success);
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      footer {
+        border-top: 1px solid var(--border);
+        color: var(--subtle);
+        font-size: 0.92rem;
+        padding: 18px 0 30px;
+      }
+
+      code {
+        background: #0f1c35;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 2px 6px;
+        color: var(--brand-2);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="wrap">
+      <div class="brand">Buy Box Mapper</div>
+    </header>
+
+    <main class="wrap hero">
+      <h1>Map Amazon Buy Box winners by location.</h1>
+      <p class="lead">
+        Buy Box Mapper is a Chrome extension that helps you compare Buy Box outcomes across ZIP codes
+        so you can spot seller coverage patterns quickly.
+      </p>
+
+      <div class="cta-row">
+        <a class="btn primary" href="privacy-policy.html">Read Privacy Policy</a>
+        <a class="btn" href="README.md">Project README</a>
+      </div>
+
+      <section class="grid" aria-label="Key details">
+        <article class="card">
+          <h2>What it does</h2>
+          <p>Runs Buy Box checks with location inputs and surfaces results in the extension UI.</p>
+        </article>
+
+        <article class="card">
+          <h2>Privacy-first approach</h2>
+          <p>No remote personal profile storage; policy details are available on a standalone page.</p>
+        </article>
+
+        <article class="card">
+          <h2>GitHub Pages ready</h2>
+          <p>
+            Publish this repository and your landing page will be available at
+            <code>/index.html</code>.
+          </p>
+          <div class="status">✅ Static hosting compatible</div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="wrap">
+      Buy Box Mapper · Chrome extension project ·
+      <a href="privacy-policy.html" style="color: var(--brand-2)">Privacy Policy</a>
+    </footer>
+  </body>
 </html>
