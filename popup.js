@@ -38,6 +38,53 @@ function buildQueue(asins, zips, mode) {
 
 function showStatus(msg) { $('status').textContent = msg; }
 
+
+function formatDuration(seconds) {
+  const s = Math.max(0, Math.round(seconds));
+  const hrs = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+
+  if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`;
+  if (mins > 0) return `${mins}m ${secs}s`;
+  return `${secs}s`;
+}
+
+function getEstimatedRuntimeSec(asins, zips, mode, delaySec, maxRetries) {
+  const jobCount = asins.length * zips.length;
+  if (!jobCount) return 0;
+
+  const expectedAttemptsPerJob = Math.max(1, (maxRetries + 1));
+  const zipChanges = mode === 'zip_then_asin' ? zips.length : jobCount;
+
+  const perAttemptSec = 3; // extraction + page settle time
+  const perZipChangeSec = 5; // ZIP dialog update overhead
+  const interJobDelaySec = delaySec * Math.max(0, jobCount - 1);
+
+  return (jobCount * expectedAttemptsPerJob * perAttemptSec)
+    + (zipChanges * perZipChangeSec)
+    + interJobDelaySec;
+}
+
+function updateRuntimeEstimate() {
+  const asins = parseAsins($('asins').value);
+  const zips = parseZips($('zips').value);
+  const mode = $('mode').value;
+  const delaySec = Math.max(10, parseInt($('delay').value, 10) || 25);
+  const maxRetries = Math.max(0, Math.min(5, parseInt($('maxRetries').value, 10) || 0));
+
+  const estimateEl = $('runtimeEstimate');
+  const jobCount = asins.length * zips.length;
+  if (!jobCount) {
+    estimateEl.textContent = 'Enter ASINs + ZIPs to estimate.';
+    return;
+  }
+
+  const estimateSec = getEstimatedRuntimeSec(asins, zips, mode, delaySec, maxRetries);
+  estimateEl.textContent = `${jobCount} checks • ~${formatDuration(estimateSec)} (${asins.length} ASIN × ${zips.length} ZIP)`;
+}
+
+
 function setUiMode(mode, shouldPersist = true) {
   uiMode = mode === 'advanced' ? 'advanced' : 'standard';
   document.body.classList.remove('ui-standard', 'ui-advanced');
@@ -75,6 +122,7 @@ function addAsinToList(asin) {
   const nextAsins = [asin, ...currentAsins];
   $('asins').value = nextAsins.join('\n');
   saveInputs();
+  updateRuntimeEstimate();
   showStatus(`Added ASIN ${asin} from current tab.`);
 }
 
@@ -104,6 +152,7 @@ function loadInputs() {
     if (inp.captchaStreakLimit != null) $('captchaStreakLimit').value = inp.captchaStreakLimit;
     if (inp.captchaCooldownSec != null) $('captchaCooldownSec').value = inp.captchaCooldownSec;
     setUiMode(inp.uiMode || 'standard', false);
+    updateRuntimeEstimate();
   });
 }
 
@@ -159,6 +208,7 @@ function applyZipPreset(append) {
   const merged = append ? [...new Set([...currentZips, ...presetZips])] : presetZips;
   $('zips').value = merged.join('\n');
   saveInputs();
+  updateRuntimeEstimate();
   showStatus(`${append ? 'Appended' : 'Loaded'} ${presetZips.length} ZIPs from "${$('zipPreset').value}".`);
 }
 
@@ -198,13 +248,13 @@ function updateModeHint() { $('modeHint').textContent = modeHints[$('mode').valu
 
 ['sellerName', 'asins', 'zips', 'delay', 'maxRetries', 'captchaStreakLimit', 'captchaCooldownSec', 'mode'].forEach((id) => {
   const el = $(id);
-  el.addEventListener('input', saveInputs);
-  el.addEventListener('change', saveInputs);
+  el.addEventListener('input', () => { saveInputs(); updateRuntimeEstimate(); });
+  el.addEventListener('change', () => { saveInputs(); updateRuntimeEstimate(); });
 });
 
 $('btnStandardMode').addEventListener('click', () => setUiMode('standard'));
 $('btnAdvancedMode').addEventListener('click', () => setUiMode('advanced'));
-$('mode').addEventListener('change', updateModeHint);
+$('mode').addEventListener('change', () => { updateModeHint(); updateRuntimeEstimate(); });
 $('btnPresetReplace').addEventListener('click', () => applyZipPreset(false));
 $('btnPresetAppend').addEventListener('click', () => applyZipPreset(true));
 $('btnPresetSave').addEventListener('click', saveCurrentAsCustomPreset);
@@ -301,7 +351,7 @@ $('btnRunner').addEventListener('click', () => {
 });
 
 function exportCsv(rows) {
-  const headers = ['run_id', 'timestamp', 'asin', 'zip', 'status', 'featured_sold_by', 'is_you_featured', 'featured_qty_available', 'retry_count', 'mode', 'delay_sec', 'notes', 'url'];
+  const headers = ['run_id', 'timestamp', 'asin', 'zip', 'status', 'featured_sold_by', 'featured_price', 'is_you_featured', 'featured_qty_available', 'retry_count', 'mode', 'delay_sec', 'notes', 'url'];
   const csv = [headers.join(',')];
   for (const r of rows) {
     csv.push(headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','));
@@ -316,3 +366,4 @@ setUiMode('standard', false);
 loadInputs();
 loadCustomPresets();
 updateModeHint();
+updateRuntimeEstimate();

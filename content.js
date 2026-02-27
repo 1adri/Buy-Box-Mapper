@@ -108,6 +108,32 @@ function extractQuantityAvailable() {
   return { qty: '', note: 'qty unavailable' };
 }
 
+function extractFeaturedPrice() {
+  const candidateSelectors = [
+    '#corePrice_feature_div .a-offscreen',
+    '#corePriceDisplay_desktop_feature_div .a-offscreen',
+    '#corePriceDisplay_mobile_feature_div .a-offscreen',
+    '#tp_price_block_total_price_ww .a-offscreen',
+    '#price_inside_buybox',
+    '#newBuyBoxPrice',
+    '#priceblock_ourprice',
+    '#priceblock_dealprice'
+  ];
+
+  for (const selector of candidateSelectors) {
+    const nodes = document.querySelectorAll(selector);
+    for (const node of nodes) {
+      const raw = String(node.textContent || '').replace(/\s+/g, ' ').trim();
+      const priceMatch = raw.match(/([$£€]\s?\d[\d,.]*)/);
+      if (priceMatch) {
+        return { price: priceMatch[1].replace(/\s+/g, ''), note: `price via ${selector}` };
+      }
+    }
+  }
+
+  return { price: '', note: 'price unavailable' };
+}
+
 function extractSeller(sellerName) {
   if (isCaptcha()) return { ok: false, status: 'CAPTCHA', error: 'CAPTCHA page detected' };
 
@@ -164,9 +190,10 @@ function extractSeller(sellerName) {
   if (!soldBy) notes = 'Could not find seller info on page';
 
   const qty = extractQuantityAvailable();
-  notes = `${notes}; ${qty.note}`;
+  const price = extractFeaturedPrice();
+  notes = `${notes}; ${qty.note}; ${price.note}`;
 
-  return { ok: true, status, soldBy, isYou, notes, qtyAvailable: qty.qty };
+  return { ok: true, status, soldBy, isYou, notes, qtyAvailable: qty.qty, featuredPrice: price.price };
 }
 
 /* ── Message handler ───────────────────────────── */
