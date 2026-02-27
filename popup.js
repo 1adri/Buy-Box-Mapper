@@ -301,7 +301,7 @@ $('btnRunner').addEventListener('click', () => {
 });
 
 function exportCsv(rows) {
-  const headers = ['run_id', 'timestamp', 'asin', 'zip', 'status', 'featured_sold_by', 'is_you_featured', 'featured_qty_available', 'retry_count', 'mode', 'delay_sec', 'notes', 'url'];
+  const headers = ['run_id', 'timestamp', 'asin', 'zip', 'status', 'featured_sold_by', 'featured_price', 'is_you_featured', 'featured_qty_available', 'retry_count', 'mode', 'delay_sec', 'notes', 'url'];
   const csv = [headers.join(',')];
   for (const r of rows) {
     csv.push(headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','));
