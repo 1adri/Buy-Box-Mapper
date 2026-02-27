@@ -68,7 +68,7 @@ function applyFilters(rows) {
     if (filters.you === 'no' && r.is_you_featured) return false;
 
     if (!filters.search) return true;
-    const haystack = [r.asin, r.zip, r.status, r.featured_sold_by, r.notes, r.featured_qty_available]
+    const haystack = [r.asin, r.zip, r.status, r.featured_sold_by, r.notes, r.featured_qty_available, r.featured_price]
       .map(x => String(x ?? '').toLowerCase())
       .join(' ');
     return haystack.includes(filters.search.toLowerCase());
@@ -129,6 +129,11 @@ function toSortValue(row, key) {
     const n = Number(raw);
     return Number.isFinite(n) ? n : -1;
   }
+  if (key === 'featured_price') {
+    const normalized = String(value ?? '').replace(/[^0-9.,-]/g, '').replace(/,/g, '');
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : -1;
+  }
   return String(value ?? '').toLowerCase();
 }
 
@@ -165,6 +170,7 @@ function renderResults(rows) {
       <td>${r.zip}</td>
       <td><span class="badge ${statusBadgeClass(r.status)}">${r.status}</span></td>
       <td>${r.featured_sold_by || ''}</td>
+      <td>${r.featured_price || ''}</td>
       <td>${r.is_you_featured ? '✅' : '❌'}</td>
       <td>${r.featured_qty_available ?? ''}</td>
       <td>${r.retry_count ?? 0}</td>
@@ -245,6 +251,7 @@ async function runAttempt(job, rs, tabId, attemptNum) {
     zip: job.zip,
     status: 'OK',
     featured_sold_by: '',
+    featured_price: '',
     is_you_featured: false,
     featured_qty_available: '',
     retry_count: attemptNum - 1,
@@ -279,6 +286,7 @@ async function runAttempt(job, rs, tabId, attemptNum) {
   if (extRes.ok) {
     if (result.status === 'OK') result.status = extRes.status;
     result.featured_sold_by = extRes.soldBy || '';
+    result.featured_price = extRes.featuredPrice || '';
     result.is_you_featured = extRes.isYou || false;
     result.featured_qty_available = extRes.qtyAvailable ?? '';
     result.notes = (result.notes ? `${result.notes}; ` : '') + (extRes.notes || '');
@@ -376,7 +384,7 @@ async function runLoop() {
     await appendResult(finalResult);
     renderResults(await getResults());
 
-    log(`  Result: ${finalResult.status} | Sold by "${finalResult.featured_sold_by}" | You=${finalResult.is_you_featured ? 'YES' : 'NO'} | Qty=${finalResult.featured_qty_available || 'n/a'}`);
+    log(`  Result: ${finalResult.status} | Sold by "${finalResult.featured_sold_by}" | Price=${finalResult.featured_price || 'n/a'} | You=${finalResult.is_you_featured ? 'YES' : 'NO'} | Qty=${finalResult.featured_qty_available || 'n/a'}`);
 
     rs.idx++;
     await setRunstate(rs);
@@ -414,7 +422,7 @@ $('btnExport').addEventListener('click', async () => {
   const rows = await getResults();
   if (!rows.length) return log('No results.');
 
-  const headers = ['run_id', 'timestamp', 'asin', 'zip', 'status', 'featured_sold_by', 'is_you_featured', 'featured_qty_available', 'retry_count', 'mode', 'delay_sec', 'notes', 'url'];
+  const headers = ['run_id', 'timestamp', 'asin', 'zip', 'status', 'featured_sold_by', 'featured_price', 'is_you_featured', 'featured_qty_available', 'retry_count', 'mode', 'delay_sec', 'notes', 'url'];
   const csv = [headers.join(',')];
   for (const r of rows) {
     csv.push(headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','));
